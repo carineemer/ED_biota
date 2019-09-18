@@ -43,8 +43,7 @@ VG_com<-read.table("VGcomm.txt", row.names=1, h=T)
 car_rpool<-read.csv("cardoso_regional_pool.csv", h=T)
 ita_rpool<-read.csv("ita_regional_pool.csv", h=T)
 cbo_rpool<-read.csv("cbo_regional_pool.csv", h=T)
-
-#save.image("ms_biota.RData")
+vg_rpool<-read.csv("ita_regional_pool.csv", h = T)
 
 ```
 
@@ -54,23 +53,15 @@ cbo_rpool<-read.csv("cbo_regional_pool.csv", h=T)
 
 valesca<- read.csv("Life_Form_valesca.csv", h = T)
 
-taxonomy<-join(ita_rpool, valesca, by = "species", type = "left")
+taxonomy<-join(vg_rpool, valesca, by = "species", type = "left")
 taxonomy1<-subset(taxonomy,!duplicated(taxonomy[,1])) # using unique spp for the traits correlations
 head(taxonomy2)
 taxonomy2<-subset(taxonomy1, select=c("species","genus","family"))
 
-write.csv(taxonomy2, "ita_plants_taxonomy.csv")
+write.csv(taxonomy2, "vg_plants_taxonomy.csv")
 
-
-
-
-colnames(car_rpool_tax)[1] <- "family"
-colnames(car_rpool_tax)[2] <- "genus"
-colnames(car_rpool_tax)[3] <- "species"
-
-car_rpool_tax$species<-gsub(' ', '_', car_rpool_tax$species)
+#car_rpool_tax$species<-gsub(' ', '_', car_rpool_tax$species)
 #cbo_rpool_tax$species<-gsub(' ', '_', cbo_rpool_tax$species)
-head(cbo_rpool_tax)
 ```
 
 
@@ -86,9 +77,10 @@ source("S.PhyloMaker")
 # add list of species at the regional pool
 
 ita_rpool_tax<-read.csv("ita_plants_taxonomy.csv", h = T)
+vg_rpool_tax<-read.csv("vg_plants_taxonomy.csv", h = T)
 
 # run the function S.PhyloMaker
-result_plants<-S.PhyloMaker(splist=ita_rpool_tax, tree=phylo, nodes=nodes)
+result_plants<-S.PhyloMaker(splist=vg_rpool_tax, tree=phylo, nodes=nodes)
 
 #par(mfrow=c(1,3),mar=c(0,0,1,0)) # show the phylogenies of the three scenarios.
 #plot(result_plants$Scenario.1,cex=1.1,main="Scenario One") ## we chose to work with scenario 1 that "assigns"add genera or species as basal polytomies within their families of genera" 
@@ -114,11 +106,11 @@ source("PolytomyResolver.R") #### function in the PolytomyResolver.R sent by Mig
 
 #tree_plants<-read.tree("tree_phylomaker_1.nwk") ### read the tree resolved in PhyloMaker, or use the vector created above
 
-PolytomyResolver(tree_plants,file="tree_plants_ita") ### tree_plants.xml goes to BEAST - takes a few hours
+PolytomyResolver(tree_plants,file="tree_plants_vg") ### tree_plants.xml goes to BEAST - takes a few hours
 
 ### then, generates tree_plants.trees which should be read again here to run the following:
 
-trees<-read.nexus("tree_plants_ita.trees") ## huge file
+trees<-read.nexus("tree_plants_vg.trees") ## huge file
 
 
 ######### after BEAST
@@ -131,8 +123,8 @@ tt100<-sample(postburnin, size=100) #randomly selects 100 trees
 is.binary(tt100[[1]])
 
 tt100_1<-tt100[[1]]
-plot(tt100_1, cex = 0.5)
-write.tree(tt100,"ita_plants_100trees.nwk")
+plot(tt100_1, cex = 0.4)
+write.tree(tt100,"vg_plants_100trees.nwk")
 
 ```
 
@@ -156,30 +148,31 @@ colnames(ED100_p)<-paste("tree",1:100,sep="") ## give name to each column
 ED100_p <- cbind(Plant_Species2 = rownames(ED100_p), ED100_p) # give name to first column to later match with other df
 rownames(ED100_p) <- NULL
 
-write.csv(ED100_p,"ita_plants_ED100.csv")
+write.csv(ED100_p,"vg_plants_ED100.csv")
 
-ED100_p[,1]
+ED100_p[,102]
 
 ED100_p["mean_ed"] <- rowMeans(ED100_p[,2:101])
+ED100_p["sum_ed"] <- rowSums(ED100_p[,2:101])
 ED100_p["sd_ed"] <-apply(ED100_p[,2:101], 1, sd)
 
 ## change name of the object
-mean_ed_ita<-ED100_p[,-(2:101)]
-colnames(mean_ed_ita)[1]<-"species"
+mean_ed_vg<-ED100_p[,-(2:101)]
+colnames(mean_ed_vg)[1]<-"species"
 
 # check names
-setdiff(tt100_1$tip.label, colnames(ITA_com))
-setdiff(colnames(ITA_com), tt100_1$tip.label)
+setdiff(tt100_1$tip.label, colnames(VG_com))
+setdiff(colnames(VG_com), tt100_1$tip.label)
 
-colnames(ITA_com)[which(names(ITA_com) == "Dalbergia_frutescens_var._frutescens")] <- "Dalbergia_frutescens"
+colnames(VG_com)[which(names(VG_com) == "Dalbergia_frutescens_var._frutescens")] <- "Dalbergia_frutescens"
 
 ### combine mean_ed_car$mean_ed in the CAR_com
-mtx1<-as.matrix(ITA_com)
+mtx1<-as.matrix(VG_com)
 list1<-matrix2sample(mtx1)
 colnames(list1)[3]<-"species"
-treat_ed<-join(list1,mean_ed_ita, by= "species", type = "left")
+treat_ed<-join(list1,mean_ed_vg, by= "species", type = "left")
 
-write.csv(treat_ed, "ITA_ED.csv")
+write.csv(treat_ed, "VG_ED.csv")
 
 ```
 
@@ -227,9 +220,8 @@ summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
 ```
 
 
-
 ```{r figure }
-
+### Make figures for the SUm of ED as well, not only Mean
 mpd<-read.csv("Overall_MPD.csv", header = T)
 
 ####### 
@@ -377,6 +369,60 @@ plot_ita<-ggplot(ITAMPDzInt, aes(x = RealTime, y = measurevar, colour =Treatment
     axis.line.y = element_line(colour = "black"),
     text=element_text(size=16))
 print(plot_ita + ggtitle("Itamambuca"))
+dev.off()
+
+
+
+#FIGURE MPDz VG
+###############################
+vgcf<-read.csv("VG_ED.csv", header = T)
+mpd<-read.csv("Overall_MPD.csv", header = T)
+#vgcf<-subset(all_areas,all_areas$Site=="vg"& all_areas$mpd.obs.z!="NA")
+
+### combine vgcf with MPD to get RealTime
+
+mpd_vg<-subset(mpd, Site == "VGM")
+
+vgcf<-join(vgcf,mpd_vg, by= "plotID", type = "left")
+dim(vgcf)
+vgcf <- vgcf[,!duplicated(names(vgcf))]
+head(vgcf)
+range(vgcf$RealTime)
+range(vgcf$sum_ed)
+
+#relevel treatment open as baseline for tests and estimates
+vgcf$Treatment <- relevel(vgcf$Treatment, ref = "open")
+
+#set Time  as factorial
+vgcf$Time<-as.factor(vgcf$Time)
+
+#load packages
+#library(ggplot2)
+#library(plyr)
+
+#then create summary dataframe
+VGMPDzInt <- summarySE(vgcf,measurevar="mean_ed",groupvars=c("Treatment","RealTime"))
+VGMPDzInt
+tiff('VGMPDz.tiff', units="in", width=5, height=4, res=600)
+pd <- position_dodge(2) # move them 1 to the left and right
+plot_vg<-ggplot(VGMPDzInt, aes(x = RealTime, y = measurevar, colour =Treatment,group=Treatment)) +
+  geom_errorbar(aes(ymin=measurevar-se, ymax=measurevar+se), colour="black", width=1,position=pd)+
+  geom_point(aes(shape=Treatment,colour=Treatment),size=3,position=pd) +
+  scale_colour_manual(values=c("blue", "chocolate2")) +
+  scale_x_continuous(limits = c(-1,90)) +
+  #scale_y_continuous(limits = c(6000, 9000))
+  scale_y_continuous(limits = c(60, 90))+
+  geom_line(size=1,position=pd) +
+  labs(x = "Time (months)")+
+  labs(y = "Evolutionary Distinctness (mean)") +
+  # theme_bw()
+  theme_classic() +
+  theme(
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_line(colour = "black"),
+    text=element_text(size=16))
+
+print(plot_vg + ggtitle("Vargem Grande"))
 dev.off()
 
 
